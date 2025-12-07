@@ -35,26 +35,26 @@ app.get('/api/latest', async (req, res) => {
         const results = [];
 
         for (const location of locations) {
-            // Query without subquery - get all records for location, sort client-side
-            const querySpec = {
-                query: "SELECT * FROM c WHERE c.location = @location",
-                parameters: [
-                    { name: "@location", value: location }
-                ]
-            };
+    const querySpec = {
+        query: `
+            SELECT TOP 1 *
+            FROM c
+            WHERE c.location = @location
+            ORDER BY c.timestamp DESC
+        `,
+        parameters: [
+            { name: "@location", value: location }
+        ]
+    };
 
-            const { resources } = await container.items
-                .query(querySpec)
-                .fetchAll();
+    const { resources } = await container.items
+        .query(querySpec)
+        .fetchAll();
 
-            if (resources.length > 0) {
-                // Sort by windowEndTime descending and get the first one
-                resources.sort((a, b) =>
-                    new Date(b.windowEndTime) - new Date(a.windowEndTime)
-                );
-                results.push(resources[0]);
-            }
-        }
+    if (resources.length > 0) {
+        results.push(resources[0]);
+    }
+}
 
         res.json({
             success: true,
@@ -80,28 +80,24 @@ app.get('/api/history/:location', async (req, res) => {
         const limit = parseInt(req.query.limit) || 12; // Last hour (12 * 5 min)
 
         const querySpec = {
-            query: "SELECT * FROM c WHERE c.location = @location",
-            parameters: [
-                { name: "@location", value: location }
-            ]
-        };
+  query: `
+    SELECT TOP @limit *
+    FROM c
+    WHERE c.location = @location
+    ORDER BY c.timestamp DESC
+  `,
+  parameters: [
+    { name: "@location", value: location },
+    { name: "@limit", value: limit }
+  ]
+};
 
-        const { resources } = await container.items
-            .query(querySpec)
-            .fetchAll();
-
-        // Sort by windowEndTime descending and limit
-        resources.sort((a, b) =>
-            new Date(b.windowEndTime) - new Date(a.windowEndTime)
-        );
-
-        const limitedResults = resources.slice(0, limit);
-
-        res.json({
-            success: true,
-            location: location,
-            data: limitedResults.reverse() // Oldest to newest for charting
-        });
+const { resources } = await container.items.query(querySpec).fetchAll();
+res.json({
+  success: true,
+  location,
+  data: resources.reverse() // oldest → newest for chart
+});
 
     } catch (error) {
         console.error('Error fetching history:', error);

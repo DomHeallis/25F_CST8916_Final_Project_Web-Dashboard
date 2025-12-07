@@ -145,11 +145,12 @@ async function updateCharts() {
 
         // Get time labels from first location's data
         const labels = historicalData[0].data.map(d =>
-            new Date(d.windowEndTime).toLocaleTimeString('en-CA', {
-                hour: '2-digit',
-                minute: '2-digit'
-            })
-        );
+    new Date(d.timestamp).toLocaleTimeString('en-CA', {
+        hour: '2-digit',
+        minute: '2-digit',
+    })
+);
+
 
         // Update or create ice thickness chart
         if (iceChart) {
